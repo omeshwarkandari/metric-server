@@ -3,9 +3,13 @@
 In our example we have installed metric-server by loging into the Master Server and cloning the git to get required deployment files.
 root@Master-Node:~# su - kubeadm
 $ yum install -y git
-$ git clone 
-
-
+$ git clone https://github.com/omeshwarkandari/metric-server.git
+$ cd metric-server/deploy/1.8+
+$ ls
+aggregated-metrics-reader.yaml  auth-reader.yaml         metrics-server-deployment.yaml  resource-reader.yaml
+auth-delegator.yaml             metrics-apiservice.yaml  metrics-server-service.yaml
+$ kubectl apply -f .
+It will run these yaml files and create metrics-server pod in the kube-system namespaces.
 $ kubectl get pods -n kube-system
 NAME                                       READY   STATUS    RESTARTS       AGE
 calico-kube-controllers-58497c65d5-mx4lr   1/1     Running   4 (40m ago)    10d
