@@ -1,5 +1,45 @@
 # Kubernetes Metrics Server
 
+In our example we have installed metric-server by loging into the Master Server and cloning the git to get required deployment files.
+root@Master-Node:~# su - kubeadm
+$ yum install -y git
+$ git clone 
+
+
+$ kubectl get pods -n kube-system
+NAME                                       READY   STATUS    RESTARTS       AGE
+calico-kube-controllers-58497c65d5-mx4lr   1/1     Running   4 (40m ago)    10d
+calico-node-2jwqb                          1/1     Running   4 (40m ago)    10d
+calico-node-5mt49                          1/1     Running   4 (21h ago)    10d
+calico-node-gtbrk                          1/1     Running   4 (40m ago)    10d
+coredns-78fcd69978-bkc9z                   1/1     Running   4 (21h ago)    10d
+coredns-78fcd69978-bwfjx                   1/1     Running   4 (21h ago)    10d
+etcd-master-node                           1/1     Running   10 (21h ago)   10d
+kube-apiserver-master-node                 1/1     Running   12 (21h ago)   10d
+kube-controller-manager-master-node        1/1     Running   12 (40m ago)   10d
+kube-proxy-krcd9                           1/1     Running   4 (21h ago)    10d
+kube-proxy-n5fvp                           1/1     Running   4 (40m ago)    10d
+kube-proxy-rsltn                           1/1     Running   4 (40m ago)    10d
+kube-scheduler-master-node                 1/1     Running   12 (21h ago)   10d
+metrics-server-78b554f76c-grpn9            1/1     Running   0              24m
+
+Once metrics-server pod is created we can run the below commands:
+Metrics of the nodes:
+$ kubectl top nodes
+NAME          CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+master-node   327m         16%    1250Mi          33%
+node-1        95m          4%     927Mi           24%
+node-2        89m          4%     615Mi           16%
+
+Metrics of the application pod:
+$ kubectl top pods
+NAME                                    CPU(cores)   MEMORY(bytes)
+petclinic-deployment-7568f578d9-s6jnz   1m           252Mi
+
+
+
+
+
 ## User guide
 
 You can find the user guide in
@@ -39,87 +79,6 @@ $ kubectl create -f deploy/1.8+/
 
 You can also use this helm chart to deploy the metric-server in your cluster (This isn't supported by the metrics-server maintainers): https://github.com/helm/charts/tree/master/stable/metrics-server
 
-If you want to test `metric-server` in a `minikube` cluster, please follow the steps below:
 
-```console
-$ minikube version
-minikube version: v1.2.0
 
-# disable the metrics-server addon for minikube in case it was enabled, because it installs the metric-server@v0.2.1
-$ minikube addons disable metrics-server
 
-# now start a new minikube
-$ minikube delete; minikube start --extra-config=kubelet.authentication-token-webhook=true
-🔥  Deleting "minikube" from virtualbox ...
-💔  The "minikube" cluster has been deleted.
-😄  minikube v1.2.0 on linux (amd64)
-🔥  Creating virtualbox VM (CPUs=2, Memory=2048MB, Disk=20000MB) ...
-🐳  Configuring environment for Kubernetes v1.15.0 on Docker 18.09.6
-    ▪ kubelet.authentication-token-webhook=true
-🚜  Pulling images ...
-🚀  Launching Kubernetes ...
-⌛  Verifying: apiserver proxy etcd scheduler controller dns
-🏄  Done! kubectl is now configured to use "minikube"
-
-# deploy the latest metric-server
-$ kubectl create -f deploy/1.8+/
-clusterrole.rbac.authorization.k8s.io/system:aggregated-metrics-reader created
-clusterrolebinding.rbac.authorization.k8s.io/metrics-server:system:auth-delegator created
-rolebinding.rbac.authorization.k8s.io/metrics-server-auth-reader created
-apiservice.apiregistration.k8s.io/v1beta1.metrics.k8s.io created
-serviceaccount/metrics-server created
-deployment.extensions/metrics-server created
-service/metrics-server created
-clusterrole.rbac.authorization.k8s.io/system:metrics-server created
-clusterrolebinding.rbac.authorization.k8s.io/system:metrics-server created
-
-# edit metric-server deployment to add the flags
-# args:
-# - --kubelet-insecure-tls
-# - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
-$ kubectl edit deploy -n kube-system metrics-server
-```
-![minikube-metric-server-args](deploy/minikube/metric-server-args.png)
-
-## Flags
-
-Metrics Server supports all the standard Kubernetes API server flags, as
-well as the standard Kubernetes `glog` logging flags.  The most
-commonly-used ones are:
-
-- `--logtostderr`: log to standard error instead of files in the
-  container.  You generally want this on.
-
-- `--v=<X>`: set log verbosity.  It's generally a good idea to run a log
-  level 1 or 2 unless you're encountering errors.  At log level 10, large
-  amounts of diagnostic information will be reported, include API request
-  and response bodies, and raw metric results from Kubelet.
-
-- `--secure-port=<port>`: set the secure port.  If you're not running as
-  root, you'll want to set this to something other than the default (port
-  443).
-
-- `--tls-cert-file`, `--tls-private-key-file`: the serving certificate and
-  key files.  If not specified, self-signed certificates will be
-  generated, but it's recommended that you use non-self-signed
-  certificates in production.
-
-- `--kubelet-certificate-authority`: the path of the CA certificate to use 
-  for validate the Kubelet's serving certificates.
-
-Additionally, Metrics Server defines a number of flags for configuring its
-behavior:
-
-- `--metric-resolution=<duration>`: the interval at which metrics will be
-  scraped from Kubelets (defaults to 60s).
-
-- `--kubelet-insecure-tls`: skip verifying Kubelet CA certificates.  Not
-  recommended for production usage, but can be useful in test clusters
-  with self-signed Kubelet serving certificates.
-
-- `--kubelet-port`: the port to use to connect to the Kubelet (defaults to
-  the default secure Kubelet port, 10250).
-
-- `--kubelet-preferred-address-types`: the order in which to consider
-  different Kubelet node address types when connecting to Kubelet.
-  Functions similarly to the flag of the same name on the API server.
