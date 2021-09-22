@@ -40,10 +40,45 @@ $ kubectl top pods
 NAME                                    CPU(cores)   MEMORY(bytes)
 petclinic-deployment-7568f578d9-s6jnz   1m           252Mi
 
+Note: I faced the issue with the Metrics Server so created the Metrics Server with the help of the Components.yaml file which is a consolidated file for all the above files
+(aggregated-metrics-reader.yaml,auth-reader.yaml,metrics-server-deployment.yaml,resource-reader.yaml, auth-delegator.yaml,metrics-apiservice.yaml & metrics-server-service.yaml)
+While runing this file there were couple of problem and solutions based on the google search.
 
+Problem 1. The Metrics Server pod was chrashdopping or not starting 
+Log analysis: $ kubectl logs <metrics server pod name> -n <namespace> 
+error: certiface error due to insecure login etc..
+Reason: Most likely the error was thrown because we have not configured a private secure certificate for the cluster being a public cluster
+Solution: Bypass the certificate validation for insecure login in the absence of private certs by adding --kubelet-insecure-tls in the arguments section for the container spec.
+            {
+              spec:     
+                containers:
+                - args:
+                  - --kubelet-insecure-tls  
+            }
+  
+Problem 2: Metric Server was up and ruining, however, it could not scrap the exisitng CPU/Memory utilization once HPA was configured.
+$ kubectl get hpa
+      NAME                REFERENCE                TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
+  petclinic-hpa     Deployment/petclinic-hpa   <unknown> / 50%        2         5         2          19m
+ HPA was configured to roll-out additonal replica once the exisitng pod CPU utilization reached 50% threshhold but increasing the HPA config failed to kick in on 
+ the artificial load increase.
+  $ kubectl logs <metrics server pod name> -n <namespace>
+Error: This was required to resolve the issue kubectl top node error Error from server (ServiceUnavailable): the server is currently unable to handle the request (get nodes.metrics.k8s.io)
+Reason: The status of the existing CPU utilization was <unknown> because the Metrics Server could not scrap the current utilization.
+Solution: Added the line hostNetwork: true under the spec based the google help.
+            {
+               spec:
+                 hostNetwork: true
+            }
+Outcome:
+  $ kubectl get hpa
+      NAME                REFERENCE                TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
+  petclinic-hpa     Deployment/petclinic-hpa       28% / 50%          2          5         2       19m
 
-
-
+  
+  
+  
+  
 ## User guide
 
 You can find the user guide in
